@@ -1,0 +1,161 @@
+-- Ultimate System: Real Weapon, Suicide Vest, and Gun Sounds
+-- ID Updated | No Passkey
+local Players = game:GetService("Players")
+local lp = Players.LocalPlayer
+local Mouse = lp:GetMouse()
+local InsertService = game:GetService("InsertService")
+
+local settings = {
+    NoReload = false,
+    NoRecoil = false,
+    InfAmmo = false
+}
+
+-- ID ASSET YANG KAMU BERIKAN
+local weaponIDs = {
+    ["AK47"] = 9914863724,
+    ["Glock17"] = 127080360866366,
+    ["M4A1"] = 2778873048
+}
+local vestID = 119316916666961
+
+-- === 1. FITUR SUARA TEMBAKAN (REALISTIC SOUND) ===
+local function playGunSound(tool)
+    -- Mencari suara tembakan di dalam tool, jika tidak ada pakai ID Universal
+    local sound = tool:FindFirstChild("Fire") or tool:FindFirstChild("Shoot") or tool:FindFirstChildOfClass("Sound")
+    
+    if not sound then
+        sound = Instance.new("Sound", tool.Handle)
+        sound.Name = "RealisticFire"
+        sound.SoundId = "rbxassetid://330706792" -- ID Suara Tembakan Militer Universal
+        sound.Volume = 2
+    end
+    sound:Play()
+end
+
+-- === 2. FITUR ROMPI BOMB (SUICIDE VEST) ===
+local function equipVest()
+    pcall(function()
+        local model = InsertService:LoadAsset(vestID)
+        local vest = model:FindFirstChildOfClass("Accessory") or model:FindFirstChildOfClass("Model")
+        if vest then
+            vest.Parent = lp.Character
+            print("[✔] Suicide Vest Equipped")
+        end
+        model:Destroy()
+    end)
+end
+
+local function explodeSelf()
+    if not lp.Character or not lp.Character:FindFirstChild("HumanoidRootPart") then return end
+    
+    local pos = lp.Character.HumanoidRootPart.Position
+    local exp = Instance.new("Explosion", workspace)
+    exp.Position = pos
+    exp.BlastRadius = 30
+    exp.BlastPressure = 1000000
+    
+    -- Suara Ledakan Besar
+    local s = Instance.new("Sound", workspace)
+    s.SoundId = "rbxassetid://142070127"
+    s.Volume = 5
+    s:Play()
+
+    lp.Character.Humanoid.Health = 0
+end
+
+-- === 3. UI MENU ===
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+local Frame = Instance.new("Frame", ScreenGui)
+Frame.Size = UDim2.new(0, 220, 0, 420)
+Frame.Position = UDim2.new(0.05, 0, 0.2, 0)
+Frame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+Frame.Active = true
+Frame.Draggable = true 
+
+local Title = Instance.new("TextLabel", Frame)
+Title.Text = "XENO REALISTIC MOD"
+Title.Size = UDim2.new(1, 0, 0, 40)
+Title.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+Title.TextColor3 = Color3.new(1, 1, 1)
+
+local function createBtn(text, pos, color, callback)
+    local btn = Instance.new("TextButton", Frame)
+    btn.Text = text
+    btn.Size = UDim2.new(0.9, 0, 0, 35)
+    btn.Position = pos
+    btn.BackgroundColor3 = color
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.MouseButton1Click:Connect(callback)
+    return btn
+end
+
+-- Tombol Aksi
+createBtn("SPAWN WEAPONS", UDim2.new(0.05, 0, 0.12, 0), Color3.fromRGB(40, 40, 40), function()
+    for n, id in pairs(weaponIDs) do
+        pcall(function()
+            local m = InsertService:LoadAsset(id)
+            local t = m:FindFirstChildOfClass("Tool")
+            if t then t.Parent = lp.Backpack end
+            m:Destroy()
+        end)
+    end
+end)
+
+createBtn("EQUIP ROMPI BOMB", UDim2.new(0.05, 0, 0.23, 0), Color3.fromRGB(80, 0, 0), equipVest)
+createBtn("DETONATE (MELEDAK)", UDim2.new(0.05, 0, 0.34, 0), Color3.fromRGB(200, 0, 0), explodeSelf)
+
+-- Setup Toggles
+local function setupT(text, pos, key)
+    local b = createBtn(text .. ": OFF", pos, Color3.fromRGB(30, 30, 30), function()
+        settings[key] = not settings[key]
+        _G[key].Text = text .. (settings[key] and ": ON" or ": OFF")
+        _G[key].BackgroundColor3 = settings[key] and Color3.fromRGB(0, 120, 0) or Color3.fromRGB(30, 30, 30)
+    end)
+    _G[key] = b
+end
+
+setupT("No Reload", UDim2.new(0.05, 0, 0.50, 0), "NoReload")
+setupT("No Recoil", UDim2.new(0.05, 0, 0.62, 0), "NoRecoil")
+setupT("Inf Ammo", UDim2.new(0.05, 0, 0.74, 0), "InfAmmo")
+
+-- === 4. SISTEM UTAMA (SOUND & MODS) ===
+Mouse.Button1Down:Connect(function()
+    local char = lp.Character
+    local tool = char and char:FindFirstChildOfClass("Tool")
+    if tool then
+        playGunSound(tool) -- Bunyikan suara setiap nembak
+        
+        -- Efek Darah Visual
+        local target = Mouse.Target
+        if target and target.Parent:FindFirstChild("Humanoid") then
+            local b = Instance.new("Part", workspace)
+            b.Size = Vector3.new(0.5, 0.5, 0.5)
+            b.Color = Color3.new(0.7, 0, 0)
+            b.Position = Mouse.Hit.p
+            b.CanCollide = false
+            b.Anchored = true
+            task.wait(1)
+            b:Destroy()
+        end
+    end
+end)
+
+game:GetService("RunService").RenderStepped:Connect(function()
+    local t = lp.Character and lp.Character:FindFirstChildOfClass("Tool")
+    if t then
+        if settings.InfAmmo or settings.NoReload then
+            for _, v in pairs(t:GetDescendants()) do
+                if (v:IsA("IntValue") or v:IsA("NumberValue")) and (v.Name:lower():find("ammo") or v.Name:lower():find("clip")) then
+                    v.Value = 999
+                end
+            end
+        end
+        if settings.NoRecoil then
+            local r = t:FindFirstChild("Recoil") or t:FindFirstChild("Shake")
+            if r then r.Disabled = true end
+        end
+    end
+end)
+
+print("[✔] Script Final Loaded | Weapon IDs & Sound Ready")
